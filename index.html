@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Authentication System</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .neomorphic {
+            border-radius: 20px;
+            background: #e0e5ec;
+            box-shadow: 8px 8px 15px #a3b1c6, -8px -8px 15px #ffffff;
+        }
+        .neomorphic-inset {
+            border-radius: 10px;
+            background: #e0e5ec;
+            box-shadow: inset 5px 5px 10px #a3b1c6, inset -5px -5px 10px #ffffff;
+        }
+        .neomorphic-button {
+            border-radius: 10px;
+            background: #e0e5ec;
+            box-shadow: 5px 5px 10px #a3b1c6, -5px -5px 10px #ffffff;
+            transition: all 0.2s ease;
+        }
+        .neomorphic-button:active {
+            box-shadow: inset 5px 5px 10px #a3b1c6, inset -5px -5px 10px #ffffff;
+        }
+        .mfa-input {
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            margin: 0 4px;
+        }
+        body {
+            background-color: #e0e5ec;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="neomorphic p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-700 mb-2">Secure Login</h1>
+            <div class="flex justify-center gap-4 mb-6">
+                <button id="qrButton" class="neomorphic-button px-4 py-2 text-gray-700">QR Code</button>
+                <button id="standardButton" class="neomorphic-button px-4 py-2 text-gray-700">Standard Login</button>
+            </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div id="qrSection" class="text-center mb-6">
+            <div id="qrcode" class="mx-auto mb-4 p-4 inline-block neomorphic"></div>
+            <div id="timer" class="text-gray-600 mb-4">Expires in: 5:00</div>
+        </div>
+
+        <!-- Standard Login Form -->
+        <form id="loginForm" class="hidden">
+            <div class="mb-4">
+                <input type="email" placeholder="Email" class="neomorphic-inset w-full p-3 outline-none" required>
+            </div>
+            <div class="mb-4 relative">
+                <input type="password" id="password" placeholder="Password" class="neomorphic-inset w-full p-3 outline-none" required>
+                <button type="button" id="togglePassword" class="absolute right-3 top-3 text-gray-600">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="remember" class="neomorphic-inset mr-2">
+                <label for="remember" class="text-gray-700">Remember me</label>
+            </div>
+        </form>
+
+        <!-- MFA Section -->
+        <div id="mfaSection" class="hidden">
+            <div class="text-center mb-4">
+                <h2 class="text-xl text-gray-700 mb-2">Enter Verification Code</h2>
+                <p class="text-gray-600">Code sent to your email</p>
+            </div>
+            <div class="flex justify-center gap-2 mb-4">
+                <input type="text" maxlength="1" class="mfa-input neomorphic-inset">
+                <input type="text" maxlength="1" class="mfa-input neomorphic-inset">
+                <input type="text" maxlength="1" class="mfa-input neomorphic-inset">
+                <input type="text" maxlength="1" class="mfa-input neomorphic-inset">
+                <input type="text" maxlength="1" class="mfa-input neomorphic-inset">
+                <input type="text" maxlength="1" class="mfa-input neomorphic-inset">
+            </div>
+            <div id="mfaTimer" class="text-center text-gray-600 mb-4">Code expires in: 30s</div>
+            <button id="resendCode" class="w-full neomorphic-button py-2 text-gray-700 mb-4">Resend Code</button>
+        </div>
+
+        <div class="text-center">
+            <button id="submitButton" class="w-full neomorphic-button py-3 text-gray-700 mb-4">Login</button>
+            <a href="#" class="text-blue-600 hover:text-blue-800">Forgot Password?</a>
+            <p class="mt-4 text-gray-600">Need help? <a href="#" class="text-blue-600 hover:text-blue-800">Contact Support</a></p>
+        </div>
+    </div>
+
+    <script>
+        // QR Code Generation
+        function generateQR() {
+            const qr = document.getElementById('qrcode');
+            qr.innerHTML = '';
+            QRCode.toCanvas(qr, 'https://example.com/auth/' + Math.random().toString(36).substr(2, 9), {
+                width: 200,
+                margin: 1
+            });
+        }
+
+        // Timer Function
+        function startTimer(duration, display) {
+            let timer = duration;
+            const intervalId = setInterval(() => {
+                const minutes = parseInt(timer / 60, 10);
+                const seconds = parseInt(timer % 60, 10);
+                display.textContent = `Expires in: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                if (--timer < 0) {
+                    clearInterval(intervalId);
+                    generateQR();
+                    startTimer(duration, display);
+                }
+            }, 1000);
+        }
+
+        // MFA Input Handling
+        const mfaInputs = document.querySelectorAll('.mfa-input');
+        mfaInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (e.target.value && index < mfaInputs.length - 1) {
+                    mfaInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    mfaInputs[index - 1].focus();
+                }
+            });
+        });
+
+        // Toggle Password Visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const password = document.getElementById('password');
+            const icon = this.querySelector('i');
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        });
+
+        // Initialize QR Code and Timer
+        generateQR();
+        startTimer(300, document.getElementById('timer'));
+
+        // Toggle between QR and Standard Login
+        document.getElementById('qrButton').addEventListener('click', function() {
+            document.getElementById('qrSection').classList.remove('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('mfaSection').classList.add('hidden');
+        });
+
+        document.getElementById('standardButton').addEventListener('click', function() {
+            document.getElementById('qrSection').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('mfaSection').classList.add('hidden');
+        });
+
+        // Submit Button Handler
+        document.getElementById('submitButton').addEventListener('click', function() {
+            document.getElementById('qrSection').classList.add('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('mfaSection').classList.remove('hidden');
+            startMFATimer();
+        });
+
+        // MFA Timer
+        function startMFATimer() {
+            let timeLeft = 30;
+            const mfaTimer = document.getElementById('mfaTimer');
+            const intervalId = setInterval(() => {
+                mfaTimer.textContent = `Code expires in: ${timeLeft}s`;
+                if (--timeLeft < 0) {
+                    clearInterval(intervalId);
+                    mfaTimer.textContent = 'Code expired';
+                }
+            }, 1000);
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
